@@ -1,0 +1,68 @@
+#!/bin/zsh
+
+#####################################################################
+
+[ ! $AWS_ACCOUNT ] && { echo 'AWS_ACCOUNT requried'; exit 1; }
+[ ! -f $ID_FILE ] && { echo 'id file required'; exit 2; }
+[ ! -f $TEMPLATE_FILE ] && { echo 'json template required'; exit 2; }
+
+#####################################################################
+
+RESOURCE_LINE=$(grep 'SECRET_ID' "$TEMPLATE_FILE" | sed 's/.*Resource":\s\+/        /')
+
+#####################################################################
+
+CREATE_GROUP_RESOURCE_POLICIES() {
+    for GROUP in $(PARSE_GROUPS)
+    do
+        NAME="GetSecrets$GROUP"
+
+        CREATE_POLICY $NAME \
+            <(GENERATE_GROUP_POLICY_JSON $GROUP)
+    done
+}
+
+UPDATE_GROUP_RESOURCE_POLICIES() {
+    for GROUP in $(PARSE_GROUPS)
+    do
+        NAME="GetSecrets$GROUP"
+
+        UPDATE_POLICY $NAME \
+            <(GENERATE_GROUP_POLICY_JSON $GROUP)
+    done
+}
+
+
+PARSE_GROUPS() {
+    { grep GROUPS "$ID_FILE" | sed 's/.*GROUPS //; s/ /\n/g' } \
+        | sort | uniq
+}
+
+GENERATE_GROUP_POLICY_JSON() {
+    local GROUP="$1"
+
+    sed '/SECRET_ID/q' "$TEMPLATE_FILE" | sed '$d'
+    echo '      "Resource": ['
+    PRINT_RESOURCE_LINES $GROUP
+    echo '      ]'
+    sed '1,/SECRET_ID/ d' "$TEMPLATE_FILE"
+}
+
+PRINT_RESOURCE_LINES() {
+    local GROUP="$1"
+    {
+        for SECRET_ID in $(PARSE_GROUP_SECRETS $GROUP)
+        do
+            echo $RESOURCE_LINE \
+                | sed "s/SECRET_ID/$SECRET_ID/; s/AWS_ACCOUNT/$AWS_ACCOUNT/";
+        done
+    } | sed '$!s/$/,/'
+}
+
+PARSE_GROUP_SECRETS() {
+    local GROUP="$1"
+    grep "GROUPS.* $GROUP\( \|$\)" "$ID_FILE" \
+        | awk '{print $2;}' \
+        | sed 's/\//\\\//g' \
+        ;
+}

@@ -1,0 +1,27 @@
+add_newline = false
+
+[character]
+success_symbol = "[%%](bold green)"
+error_symbol = "[%%](bold red)"
+
+[directory]
+truncation_length = 5
+format = "[$path]($style)"
+
+[git_branch]
+style = "bold yellow"
+format = " [$symbol $branch]($style) "
+symbol = ""
+
+[username]
+style_user = "bold dimmed purple"
+show_always = true
+format = "[$user]($style)"
+
+[hostname]
+ssh_only = false
+format = "[@](bold dimmed white)[$hostname]($style)[ :: ](bold dimmed white)"
+style = "bold dimmed blue"
+
+[cmd_duration]
+format = ""

@@ -1,0 +1,29 @@
+#!/bin/zsh
+source "${0:a:h}/../functions"
+
+[ ! $AWS_PROFILE ] && { echo 'AWS_PROFILE required'; exit 1; }
+
+#####################################################################
+
+GROUP=$(GET_GROUPS | fzf --reverse --prompt 'Select a group: ')
+[ ! $GROUP ] && exit 2
+
+ARN=$(\
+    echo $RD_POLICIES | awk '{print $2;}' \
+        | fzf --reverse --prompt 'Select a policy to attach: '
+)
+[ ! $ARN ] && exit 2
+
+
+echo "GROUP :: $GROUP"
+echo "ARN  :: $ARN"
+printf "Really attach the policy to the listed group? [yN]"
+read -k yn
+echo
+
+[[ $yn =~ ^[yY]$ ]] || { echo aborting; exit 1 }
+
+aws --profile $AWS_PROFILE iam attach-group-policy \
+    --group-name "$GROUP" \
+    --policy-arn "$ARN" \
+    ;

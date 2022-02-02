@@ -1,0 +1,7 @@
+#!/bin/sh
+
+curl --verbose\
+    --data @data/json/twilio-email-post.json \
+    --header 'Content-Type: application/json' \
+    $PM_SYNC_URL/svc/lead-mgmt-api/Twilio/email/FireTask \
+    ;

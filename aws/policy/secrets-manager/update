@@ -1,0 +1,16 @@
+#!/bin/zsh
+
+#####################################################################
+
+source "${0:a:h}/../functions"
+
+#####################################################################
+
+ID_FILE="${0:a:h}/ids.txt"
+TEMPLATE_FILE="${0:a:h}/template.json"
+
+source "${0:a:h}/individual"
+UPDATE_INDIVIDUAL_RESOURCE_POLICIES
+
+source "${0:a:h}/group"
+UPDATE_GROUP_RESOURCE_POLICIES

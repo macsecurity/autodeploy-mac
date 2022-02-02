@@ -1,0 +1,14 @@
+ProductionRdapi        rdapi/configuration/production-qwka9s               GROUPS SRE
+DevelopmentRdapi       rdapi/configuration/development-tOaNid              GROUPS SRE Development
+ProductionRentplus     rentplus/configuration/production-4ToyBK            GROUPS SRE RentplusTemporary
+DevelopmentRentplus    rentplus/configuration/development-TmI21b           GROUPS SRE Development
+ProductionEmail        email/configuration/production-l3zoR4               GROUPS SRE
+DevelopmentEmail       email/configuration/development-ZCdsFW              GROUPS SRE Development
+ProductionCallrouting  callrouting/configuration/production-wRMCQy         GROUPS SRE
+DevelopmentCallrouting callrouting/configuration/development-vpyhUf        GROUPS SRE Development
+ProductionFollowup     followup/configuration/production-GKKFEc            GROUPS SRE
+DevelopmentFollowup    followup/configuration/development-2OyqKu           GROUPS SRE Development
+ProductionPmsync       pm-sync/configuration/production-13qMyN             GROUPS SRE
+DevelopmentPmsync      pm-sync/configuration/development-EKgRgZ            GROUPS SRE Development
+ProductionLeadmgmtapi  lead-mgmt-api/configuration/production-fcdENm       GROUPS SRE
+DevelopmentLeadmgmtapi lead-mgmt-api/configuration/development-qxjUs9      GROUPS SRE Development

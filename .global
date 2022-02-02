@@ -1,0 +1,19 @@
+#!/usr/bin/zsh
+[ ! $RD_SCRIPTS_VIRTUALENV ] && export RD_SCRIPTS_VIRTUALENV="${0:a:h}/../env"
+
+export FZF_OPTIONS=(--height 10 --tac --layout=reverse --tac)
+
+export ENVIRONMENTS=("${0:a:h}/.dev" "${0:a:h}/.prod" "${0:a:h}/.local")
+export ENV_SYNC_FILE="${0:a:h}/.sync"
+
+
+STAGE_ENV_VAR() {
+	local VAR_NAME="$1"
+	local VAR_LINE="export $VAR_NAME="
+
+	echo "$VAR_NAME required"
+	grep -q "$VAR_LINE" $ENV_SYNC_FILE || {
+		echo $VAR_LINE >> $ENV_SYNC_FILE
+		sort -o $ENV_SYNC_FILE $ENV_SYNC_FILE
+	}
+}

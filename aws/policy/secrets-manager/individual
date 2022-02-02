@@ -1,0 +1,36 @@
+#!/bin/zsh
+
+#####################################################################
+
+[ ! $AWS_ACCOUNT ] && { echo 'AWS_ACCOUNT requried'; exit 1; }
+[ ! -f $ID_FILE ] && { echo 'id file required'; exit 2; }
+[ ! -f $TEMPLATE_FILE ] && { echo 'json template required'; exit 2; }
+
+#####################################################################
+
+CREATE_INDIVIDUAL_RESOURCE_POLICIES() {
+    while read line
+    do
+        NAME="GetSecret$(echo $line | awk '{print $1;}')"
+        SECRET_ID=$(echo $line | awk '{print $2;}' | sed 's/\//\\\//g')
+
+        CREATE_POLICY $NAME \
+            <(GENERATE_INDIVIDUAL_POLICY_JSON $SECRET_ID)
+    done < "$ID_FILE"
+}
+
+UPDATE_INDIVIDUAL_RESOURCE_POLICIES() {
+    while read line
+    do
+        NAME="GetSecret$(echo $line | awk '{print $1;}')"
+        SECRET_ID=$(echo $line | awk '{print $2;}' | sed 's/\//\\\//g')
+
+        UPDATE_POLICY $NAME \
+            <(GENERATE_INDIVIDUAL_POLICY_JSON $SECRET_ID)
+    done < "$ID_FILE"
+}
+
+GENERATE_INDIVIDUAL_POLICY_JSON() {
+    local SECRET_ID="$1"
+    sed "s/SECRET_ID/$SECRET_ID/; s/AWS_ACCOUNT/$AWS_ACCOUNT/" "$TEMPLATE_FILE"
+}

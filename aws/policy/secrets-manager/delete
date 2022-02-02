@@ -1,0 +1,12 @@
+#!/bin/zsh
+
+#####################################################################
+
+source "${0:a:h}/../functions"
+
+#####################################################################
+
+for ARN in $(echo $RD_POLICIES | grep GetSecret | awk '{print $2;}')
+do
+    DELETE_POLICY $ARN
+done

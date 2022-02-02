@@ -1,0 +1,166 @@
+#!/bin/zsh
+source "${0:a:h}/../../.global"
+
+#####################################################################
+
+[ ! $AWS_PROFILE ] && { STAGE_ENV_VAR 'AWS_PROFILE'; ERROR=1; }
+[ ! $AWS_ACCOUNT ] && { STAGE_ENV_VAR 'AWS_ACCOUNT'; ERROR=1; }
+[ ! $AWS_RD_DEVCLI_GROUP ] && { STAGE_ENV_VAR 'AWS_RD_DEVCLI_GROUP'; ERROR=1; }
+[ ! $AWS_RD_CREDENTIALS_DIR ] && { STAGE_ENV_VAR 'AWS_RD_CREDENTIALS_DIR'; ERROR=1; }
+
+[ $ERROR ] && exit $ERROR;
+
+AWS_CREDENTIALS="$AWS_RD_CREDENTIALS_DIR/aws"
+
+#####################################################################
+
+GET_DEVELOPER_CLI_USERS() {
+	aws --profile $AWS_PROFILE --output json \
+		iam get-group --group-name "$AWS_RD_DEVCLI_GROUP" \
+		| jq -r '.Users | .[].UserName'
+}
+
+ROTATE_USER_CREDENTIALS() {
+	local RD_USERNAME="$1"
+	local RD_USERSERIAL="$2"
+
+	DELETE_ALL_ACCESS_KEYS $RD_USERNAME
+	CREATE_ACCESS_KEY $RD_USERNAME
+	SYNC_USER_SERIAL $RD_USERNAME $RD_USERSERIAL
+}
+
+GET_ACCESS_KEYS() {
+	local RD_USERNAME="$1"
+
+	aws --profile $AWS_PROFILE --output json \
+		iam list-access-keys --user-name $RD_USERNAME \
+		| jq -r '.AccessKeyMetadata | .[] | .AccessKeyId'
+}
+
+DELETE_ACCESS_KEY() {
+	local RD_USERNAME="$1"
+	local KEY_ID="$2"
+
+	aws --profile $AWS_PROFILE \
+		iam delete-access-key --user-name $RD_USERNAME --access-key-id $KEY_ID
+}
+
+CREATE_ACCESS_KEY() {
+	local RD_USERNAME="$1"
+
+	DELETE_USER_CREDENTIALS "$RD_USERNAME"
+
+	aws --profile $AWS_PROFILE --output json \
+		iam create-access-key --user-name $RD_USERNAME \
+		| jq -r '.AccessKey | .AccessKeyId, .SecretAccessKey' \
+		| awk -v username=$RD_USERNAME '
+			NR==1{print "[rd."username"]"}
+			NR==1{print "aws_access_key_id = " $1}
+			NR==2{print "aws_secret_access_key = " $1}
+			NR==2{print ""}
+			' >> "$AWS_CREDENTIALS"
+}
+
+CREATE_USER() {
+	local RD_USERNAME="$1"
+
+	aws --profile $AWS_PROFILE \
+		iam create-user --user-name $RD_USERNAME
+
+	aws --profile $AWS_PROFILE \
+		iam add-user-to-group --group-name $AWS_RD_DEVCLI_GROUP --user-name $RD_USERNAME
+}
+
+DELETE_USER() {
+	local RD_USERNAME="$1"
+
+	DELETE_ALL_ACCESS_KEYS $RD_USERNAME
+
+	aws --profile $AWS_PROFILE \
+		iam remove-user-from-group --group-name $AWS_RD_DEVCLI_GROUP --user-name $RD_USERNAME
+
+	aws --profile $AWS_PROFILE \
+		iam delete-user --user-name $RD_USERNAME \
+		&& $DELETE_USER_CREDENTIALS
+}
+
+DELETE_USER_CREDENTIALS() {
+	local RD_USERNAME="$1"
+	local USER_REGEX=$(GET_USERNAME_REGEX "$RD_USERNAME")
+
+	DELETE_EXISTING_USER_SERIAL "$RD_USERNAME"
+	sed -i "/$USER_REGEX/,+3d" "$AWS_CREDENTIALS"
+}
+
+DELETE_ALL_ACCESS_KEYS() {
+	local RD_USERNAME="$1"
+	echo 'deleting user access keys'
+	for key in $(GET_ACCESS_KEYS $RD_USERNAME)
+	do
+		echo "deleting key '$key'"
+		DELETE_ACCESS_KEY $RD_USERNAME $key
+	done
+}
+
+USER_EXISTS() {
+	local RD_USERNAME="$1"
+
+	aws --profile $AWS_PROFILE \
+		iam get-user --user-name $RD_USERNAME >/dev/null 2>&1
+}
+
+ENCRYPT_CREDENTIALS() {
+	[ ! $JAMF_GPG_PASSPHRASE ] && { STAGE_ENV_VAR 'JAMF_GPG_PASSPHRASE'; return 1; }
+	[ ! -f "$AWS_CREDENTIALS" ] && { echo 'nothing to encrypt'; return 2; }
+	gpg --batch --passphrase "$JAMF_GPG_PASSPHRASE" \
+		--output "$AWS_RD_CREDENTIALS_DIR/dev-credentials" \
+		--symmetric "$AWS_CREDENTIALS" \
+		;
+}
+
+DECRYPT_CREDENTIALS() {
+	[ ! $JAMF_GPG_PASSPHRASE ] && { STAGE_ENV_VAR 'JAMF_GPG_PASSPHRASE'; return 1; }
+	[ ! -f "$AWS_RD_CREDENTIALS_DIR/dev-credentials" ] && { echo 'nothing to decrypt'; return 0; }
+
+	[ -f "$AWS_CREDENTIALS.bak" ] && {
+		echo "please remove '$AWS_CREDENTIALS.bak' before proceeding"
+		return 2
+	}
+	[ -f "$AWS_CREDENTIALS" ] && {
+		mv "$AWS_CREDENTIALS" "$AWS_CREDENTIALS.bak"
+	}
+
+	gpg --batch --passphrase "$JAMF_GPG_PASSPHRASE" \
+		--output "$AWS_CREDENTIALS" \
+		--decrypt "$AWS_RD_CREDENTIALS_DIR/dev-credentials" \
+		;
+}
+
+SYNC_USER_SERIAL() {
+	local RD_USERNAME="$1"
+	local RD_USERSERIAL="$2"
+	local USERNAME_REGEX=$(GET_USERNAME_REGEX "$RD_USERNAME")
+
+	DELETE_EXISTING_USER_SERIAL "$RD_USERNAME"
+
+	sed -i "/$USERNAME_REGEX/i $RD_USERSERIAL" "$AWS_CREDENTIALS"
+}
+
+DELETE_EXISTING_USER_SERIAL() {
+	local RD_USERNAME="$1"
+	local USERNAME_REGEX=$(GET_USERNAME_REGEX "$RD_USERNAME")
+
+	local EXISTING_SERIAL=$(\
+		grep -B1 "$USERNAME_REGEX" "$AWS_CREDENTIALS" \
+		| grep . | head -n1 \
+	)
+
+	[ $EXISTING_SERIAL ] && [[ ! $EXISTING_SERIAL =~ $USERNAME_REGEX ]] && {
+		sed -i "/^$EXISTING_SERIAL$/d" "$AWS_CREDENTIALS"
+	}
+}
+
+GET_USERNAME_REGEX() {
+	local RD_USERNAME="$1"
+	printf "^\\[rd.$RD_USERNAME\\]$"
+}

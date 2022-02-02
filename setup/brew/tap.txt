@@ -1,0 +1,3 @@
+homebrew/cask-fonts
+hudochenkov/sshpass
+microsoft/mssql-release

@@ -1,0 +1,18 @@
+#!/bin/zsh
+source "${0:a:h}/functions"
+
+ARN=$(\
+    echo $RD_POLICIES | awk '{print $2;}' \
+    | fzf --reverse --prompt 'Select a policy to delete: '
+)
+
+[ ! $ARN ] && exit
+
+echo $ARN
+printf "Really delete the policy listed above? [yN]"
+read -k yn
+echo
+
+[[ $yn =~ ^[yY]$ ]] || { echo aborting; exit 1 }
+
+DELETE_POLICY $ARN

@@ -1,0 +1,32 @@
+#!/bin/zsh
+source ${0:a:h}/.global
+
+printf 'update environment variable sync file? [yN] : '
+read yn; [[ $yn =~ ^[yY] ]] && $EDITOR $ENV_SYNC_FILE
+
+for env in $ENVIRONMENTS; do [ ! -f $env ] && touch $env; done
+
+while read line
+do
+    for env in $ENVIRONMENTS
+    do
+        grep -q "$line" $env || {
+            echo $line >> $env && echo "added '$line' to '$env'"
+        }
+    done
+done < <(sed -n '/^./p' "$ENV_SYNC_FILE")
+
+for env in $ENVIRONMENTS
+do
+    while read line
+    do
+        env_var=$(echo "$line" | sed 's/=.*//')
+        grep -q "$env_var" "$ENV_SYNC_FILE" || {
+            echo "Removing unwanted '$env_var' from '$env'"
+            sed -i "/$env_var/d" $env
+        }
+    done < $env
+done
+
+for env in $ENVIRONMENTS; do sort -o $env $env; done
+sort -o $ENV_SYNC_FILE $ENV_SYNC_FILE

@@ -1,0 +1,15 @@
+#!/bin/zsh
+source "${0:a:h}/functions"
+
+[ ! $AWS_PROFILE ] && { STAGE_ENV_VAR 'AWS_PROFILE'; ERROR=1; }
+
+#####################################################################
+
+ENCRYPT_CREDENTIALS \
+	&& aws --profile $AWS_PROFILE \
+		s3 cp \
+			"$AWS_RD_CREDENTIALS_DIR/dev-credentials" \
+			s3://rd-sre/dev-credentials \
+		;
+
+rm "$AWS_RD_CREDENTIALS_DIR/dev-credentials" 2>/dev/null

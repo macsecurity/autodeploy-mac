@@ -1,0 +1,114 @@
+#!/bin/zsh
+[[ $EUID -eq 0 ]] && { echo  'ERROR::Setup cannot be run as root'; exit 1; }
+command -v zsh >/dev/null || { echo 'ERROR::ZSH required'; exit 1; }
+
+source "${0:a:h}/utils/color.zsh"
+source "${0:a:h}/utils/filesystem.zsh"
+source "${0:a:h}/utils/osx.zsh"
+source "${0:a:h}/utils/sudo.zsh"
+source "${0:a:h}/utils/user-input.zsh"
+source "${0:a:h}/utils/validate.zsh"
+
+source "${0:a:h}/brew/setup.zsh"
+source "${0:a:h}/zsh/setup.zsh"
+source "${0:a:h}/apps/setup.zsh"
+source "${0:a:h}/postgresql/setup.zsh"
+
+cd ${0:a:h}
+
+#####################################################################
+### Settings ########################################################
+#####################################################################
+
+BUILD_DIR="$HOME/.rentdynamics"
+SETUP_HOME_DIR="${0:a:h}"
+export LOG="$HOME/rd-setup.log"
+date > $LOG
+
+[ ! $FIRST_TIME ] && FIRST_TIME=1
+
+FIRST_NAME="$RD_MY_FIRST_NAME"
+LAST_NAME="$RD_MY_LAST_NAME"
+EMAIL_ADDRESS="$RD_MY_EMAIL_ADDRESS"
+
+#####################################################################
+
+#####################################################################
+### Validation and Pre/Post Processing ##############################
+#####################################################################
+
+function VALIDATE() {
+	STATUS 'validating computer settings / state'
+	SUDO__GET_PASSWORD
+	VALIDATE__GIT_TARGET_IS_MASTER "${0:a:h}"
+	VALIDATE__OSX_IS_LATEST
+	SUCCESS 'system ready for setup'
+
+	USER_PROMPT 'proceed? [Y/n]'
+	READ yn; [[ $yn =~ ^[nN] ]] && FATAL 'user abort'
+
+	FILESYSTEM__SETUP $BUILD_DIR
+}
+
+function OPEN_LOG() {
+	CHECK 'opening subprocess log in new window'
+	OSX__RUN_SCRIPT_IN_NEW_TERMINAL \
+		'while true; do clear; tail -n $(tput lines) ~/rd-setup.log; echo; echo ^^^^^ RD-SETUP SUBPROCESS LOG ^^^^^; date; sleep 1; done' \
+		&& OK 'see extra window for subprocess logs' \
+		|| WARN 'failed to open terminal window; see ~/rd-setup.log for subprocess details' \
+		;
+}
+
+function CLEAN_UP() {
+	local REBOOT=0
+
+	SUCCESS 'developer environment setup complete!'
+	STATUS 'be sure to double check output for warnings or manual installation requirements'
+	USER_PROMPT "keep subprocess install log (target '$LOG')? [y/N]"
+	READ yn
+	[[ $yn =~ ^[yY] ]] && STATUS 'keeping log file' || {
+		CHECK 'removing log file'
+		rm $LOG >/dev/null 2>&1 && OK || WARN 'failed to remove log'
+	}
+
+	[[ $FIRST_TIME == 1 ]] && {
+		STATUS 'A reboot is required to complete setup'
+		USER_PROMPT 'Reboot now? [Y/n]'
+		READ yn
+		[[ $yn =~ ^[nN] ]] || {
+			REBOOT=1
+			SUDO__GET_PASSWORD
+		}
+	}
+
+	echo; echo
+	SUCCESS 'update complete; have a nice day :)'
+	echo '- yage'; echo; echo
+
+	[[ $REBOOT -eq 1 ]] && {
+		STATUS 'Rebooting in 3 seconds...'
+		sleep 5
+		sudo reboot
+	}
+}
+
+#####################################################################
+
+#####################################################################
+### Full Setup ######################################################
+#####################################################################
+
+VALIDATE
+OPEN_LOG
+
+GET_USER_CREDENTIALS
+
+BREW__SETUP
+SETUP_USER_ENV "$BUILD_DIR"
+ZSH__SETUP
+APPS__SETUP "$BUILD_DIR"
+POSTGRESQL__SETUP
+
+CLEAN_UP
+
+exit 0

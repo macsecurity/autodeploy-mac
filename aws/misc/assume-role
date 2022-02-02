@@ -1,0 +1,62 @@
+#!/bin/zsh
+source "${0:a:h}/../../.global"
+
+#####################################################################
+
+CREDENTIALS_DIR="$HOME/.aws"
+CREDENTIALS_FILE="$CREDENTIALS_DIR/credentials"
+
+[ ! $AWS_PROFILE ] && { STAGE_ENV_VAR 'AWS_PROFILE'; ERROR=1; }
+[ ! $ASSUMED_PROFILE_NAME ] && {
+	TEMP_CREDENTIALS_PREFIX='temp'
+	TEMP_CREDENTIALS_REGEX="^\\[$TEMP_CREDENTIALS_PREFIX\\.\\([^]]\\+\\)\\]$"
+	ASSUMED_PROFILE_NAME=$(\
+		grep "$TEMP_CREDENTIALS_REGEX" $CREDENTIALS_FILE \
+			| sed "s/$TEMP_CREDENTIALS_REGEX/\\1/" \
+			| fzf ${FZF_OPTIONS[@]} --print-query --prompt 'Select (or type) a temporary profile name : '\
+			| tail -1 \
+			| sed "s/.*/$TEMP_CREDENTIALS_PREFIX.&/" \
+	)
+	[ ! $ASSUMED_PROFILE_NAME ] && { echo 'Invalid profile name'; ERROR=1; }
+}
+[ ! $ARN ] && {
+	ARN=$(\
+		aws --profile $AWS_PROFILE --output json \
+			iam list-roles \
+			| jq -r '.[] | .[].Arn' \
+			| fzf ${FZF_OPTIONS[@]} --prompt 'Select an ARN to assume : ' \
+	)
+	[ ! $ARN ] && { echo 'No valid ARN specified'; ERROR=1; }
+}
+
+[ $ERROR ] && exit $ERROR
+
+#####################################################################
+
+GENERATE_MISSING_FILES() {
+	[ ! -d "$CREDENTIALS_DIR" ] && mkdir "$CREDENTIALS_DIR"
+	[ ! -f "$CREDENTIALS_FILE" ] && touch "$CREDENTIALS_FILE"
+}
+
+DELETE_EXISTING_TEMPORARY_CREDENTIALS() {
+	sed -i "/\\[$ASSUMED_PROFILE_NAME\\]/,+2d" "$CREDENTIALS_FILE"
+}
+
+GENERATE_TEMPORARY_CREDENTIALS() {
+	aws --profile "$AWS_PROFILE" \
+		sts assume-role --role-arn "$ARN" --role-session-name "$ASSUMED_PROFILE_NAME" \
+		| grep CREDENTIALS \
+		| awk -v profile="$ASSUMED_PROFILE_NAME" \
+			'{print "[" profile "]\naws_access_key_id = " $2 "\naws_secret_access_key_id = " $4;}' \
+}
+
+INSERT_TEMPORARY_CREDENTIALS() {
+	GENERATE_TEMPORARY_CREDENTIALS >> "$CREDENTIALS_FILE" \
+		|| echo 'ERROR :: Failed to assume role'
+}
+
+#####################################################################
+
+GENERATE_MISSING_FILES
+DELETE_EXISTING_TEMPORARY_CREDENTIALS
+INSERT_TEMPORARY_CREDENTIALS

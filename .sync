@@ -1,0 +1,13 @@
+#!/bin/sh
+export AWS_ACCOUNT=
+export AWS_JAMF_KEY=
+export AWS_PROFILE=
+export AWS_RD_CREDENTIALS_DIR=
+export AWS_RD_DEVCLI_GROUP=
+export AWS_REGION=
+export HELM_EXPERIMENTAL_OCI=
+export JAMF_GPG_PASSPHRASE=
+export PM_SYNC_URL=
+export R_AUTH=
+export R_HOST=
+export R_PORT=

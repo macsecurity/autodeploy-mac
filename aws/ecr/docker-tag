@@ -1,0 +1,6 @@
+#!/bin/zsh
+
+[ ! $AWS_REGION ] && { echo 'AWS_REGION required'; exit 1; }
+[ ! $AWS_ACCOUNT ] && { echo 'AWS_ACCOUNT required'; exit 1; }
+
+echo "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com"

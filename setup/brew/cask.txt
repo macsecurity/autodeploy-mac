@@ -1,0 +1,4 @@
+1password
+docker
+font-hack-nerd-font
+google-chrome

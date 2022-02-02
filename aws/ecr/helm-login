@@ -1,0 +1,8 @@
+#!/bin/zsh
+
+[ ! $AWS_PROFILE ] && { echo 'AWS_PROFILE required'; exit 1; }
+[ ! $AWS_REGION ] && { echo 'AWS_REGION required'; exit 1; }
+[ ! $AWS_ACCOUNT ] && { echo 'AWS_ACCOUNT required'; exit 1; }
+
+aws --profile "$AWS_PROFILE" ecr get-login-password --region "$AWS_REGION" \
+    | helm registry login --username AWS --password-stdin aws "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com"

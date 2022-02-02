@@ -1,0 +1,79 @@
+#!/bin/zsh
+
+#####################################################################
+
+[ ! $AWS_PROFILE ] && { echo 'AWS_PROFILE required'; exit 1; }
+[ ! $AWS_ACCOUNT ] && { echo 'AWS_ACCOUNT requried'; exit 1; }
+
+#####################################################################
+
+POLICIES=$(aws --profile $AWS_PROFILE iam list-policies)
+RD_POLICIES=$(echo $POLICIES | grep $AWS_ACCOUNT)
+
+#####################################################################
+
+CREATE_POLICY() {
+    local NAME="$1"
+    local JSON_FILE="$2"
+
+    aws --profile $AWS_PROFILE iam create-policy \
+        --policy-name "$NAME" \
+        --policy-document file://"$JSON_FILE" \
+        ;
+}
+
+UPDATE_POLICY() {
+    local NAME="$1"
+    local JSON_FILE="$2"
+
+    local ARN="arn:aws:iam::$AWS_ACCOUNT:policy/$NAME"
+
+    aws --profile $AWS_PROFILE iam create-policy-version \
+        --set-as-default \
+        --policy-arn "$ARN" \
+        --policy-document file://"$JSON_FILE" \
+        ;
+}
+
+DELETE_POLICY() {
+    local ARN="$1"
+
+    echo "Attempting to delete $ARN"
+    for VERSION in $(GET_POLICY_VERSIONS $ARN)
+    do
+        echo "\tdeleting $VERSION"
+        aws --profile $AWS_PROFILE iam delete-policy-version \
+            --policy-arn "$ARN" \
+            --version-id "$VERSION"
+    done
+
+    echo "\tdeleting default version"
+    aws --profile $AWS_PROFILE iam delete-policy --policy-arn "$ARN"
+    echo
+}
+
+GET_POLICY_VERSIONS() {
+    local ARN="$1"
+
+    aws --profile $AWS_PROFILE iam list-policy-versions --policy-arn "$ARN" \
+        | grep -v True \
+        | awk '{print $4;}' \
+        ;
+}
+
+#####################################################################
+
+GET_USERS() {
+    aws --profile $AWS_PROFILE --output json iam list-users \
+        | jq -r '.[] | .[] | .UserName'
+}
+
+GET_GROUPS() {
+    aws --profile $AWS_PROFILE --output json iam list-groups \
+        | jq -r '.[] | .[] | .GroupName'
+}
+
+GET_ROLES() {
+    aws --profile $AWS_PROFILE --output json iam list-roles \
+        | jq -r '.[] | .[] | .RoleName'
+}

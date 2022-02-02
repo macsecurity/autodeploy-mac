@@ -1,0 +1,19 @@
+[user]
+	email = EMAIL
+	name = FIRST LAST
+[push]
+	default = current
+[difftool]
+	prompt = false
+	trustExitCode = true
+[diff]
+	tool = vimdiff
+[merge]
+	tool = vimdiff
+[pull]
+	default = current
+	rebase = true
+[color]
+	branch = always
+	diff = always
+	status = always

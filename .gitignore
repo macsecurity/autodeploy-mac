@@ -1,0 +1,9 @@
+.dev
+.prod
+.local
+
+data/
+env/
+logs/
+__pycache__/
+node_modules/
