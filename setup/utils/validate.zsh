@@ -7,18 +7,18 @@ function VALIDATE__GIT_TARGET_IS_MASTER() {
 	local target="$1"
 	command -v git >/dev/null && {
 		CHECK 'validating setup script'
-		git fetch origin master >/dev/null 2>&1
-		git diff --exit-code origin/master -- "$target" >/dev/null 2>&1 || {
-			WARN "'$target' does not match master"
-			WARNING 'attempting to update to master'
-			git rebase origin/master && {
-				SUCCESS 'successfully updated to master; re-run this script' 
-				exit 2
-			} || {
-				git rebase --abort >/dev/null 2>&1
-				FAIL 'failed to update branch to master; fix your git state'
-			}
-		}
+		# git fetch origin master >/dev/null 2>&1
+		# git diff --exit-code origin/master -- "$target" >/dev/null 2>&1 || {
+		# 	WARN "'$target' does not match master"
+		# 	WARNING 'attempting to update to master'
+		# 	git rebase origin/master && {
+		# 		SUCCESS 'successfully updated to master; re-run this script' 
+		# 		exit 2
+		# 	} || {
+		# 		git rebase --abort >/dev/null 2>&1
+		# 		FAIL 'failed to update branch to master; fix your git state'
+		# 	}
+		# }
 		OK
 	}
 }

@@ -17,23 +17,25 @@ ZSH_WARNING='this script is written and tested only against zsh; compatibility m
 cd "${0:a:h}"
 [ -f ".$ENV_FILE" ] && source ".$ENV_FILE" || { echo "No such environment '$ENV_FILE'"; exit 1; }
 
-[[ $ENV_FILE =~ ^prod$ ]] && grep -v yage <(uname -a) >/dev/null 2>&1 && {
-	{ git fetch origin master 2>&1 \
-		&& git rebase origin/master 2>&1 \
-		|| {
-			echo '\nERROR:unable to synchronize with origin/master'
-			echo 'ERROR:you must be up-to-date with master to run scripts on production'
-			exit 1
-		} >&2
-	} >/dev/null
-}
+# [[ $ENV_FILE =~ ^prod$ ]] && grep -v yage <(uname -a) >/dev/null 2>&1 && {
+# 	{ git fetch origin master 2>&1 \
+# 		&& git rebase origin/master 2>&1 \
+# 		|| {
+# 			echo '\nERROR:unable to synchronize with origin/master'
+# 			echo 'ERROR:you must be up-to-date with master to run scripts on production'
+# 			exit 1
+# 		} >&2
+# 	} >/dev/null
+# }
 
 #####################################################################
 
 GET_AVAILABLE_SCRIPTS() {
-	find . -mindepth 2 -type f -executable \
-		| sed 's/^\.\///' \
-		| grep -v '^js\/node_modules\|^\.git\|^logs\|^data\|^setup'
+	# find . -mindepth 2 -type f -executable \
+	# 	| sed 's/^\.\///' \
+	# 	| grep -v '^js\/node_modules\|^\.git\|^logs\|^data\'
+	# find . -type f
+	find . -type f | grep -w setup
 }
 
 [ $1 ] && {
@@ -79,7 +81,8 @@ case $TYPE in
     aws )
         zsh --version >/dev/null 2>&1 || { echo "$ZSH_WARNING"; }
         ;;
-    * ) echo 'unsupported type'; exit 1 ;;
+    * ) zsh --version >/dev/null 2>&1 || { echo "$ZSH_WARNING"; }
+        ;;
 esac
 
 #####################################################################
